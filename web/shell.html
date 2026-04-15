@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Hydration Physics</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: #000;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    /* Canvas fills the full viewport */
+    #canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    /* On-screen controls for mobile */
+    #controls {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 14px;
+      z-index: 10;
+      pointer-events: auto;
+    }
+
+    .ctrl-btn {
+      background: rgba(10, 30, 90, 0.75);
+      color: #7bcfff;
+      border: 1px solid rgba(80, 150, 255, 0.6);
+      border-radius: 10px;
+      padding: 13px 22px;
+      font-size: 15px;
+      font-family: system-ui, sans-serif;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: background 0.1s;
+    }
+    .ctrl-btn:active {
+      background: rgba(30, 80, 200, 0.9);
+    }
+
+    /* Loading overlay */
+    #loading {
+      position: fixed;
+      inset: 0;
+      background: #020510;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #4a9eff;
+      font-family: system-ui, sans-serif;
+      font-size: 18px;
+      gap: 18px;
+      z-index: 100;
+    }
+    #loading-title {
+      font-size: 26px;
+      font-weight: 600;
+      color: #7bcfff;
+      letter-spacing: 0.05em;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid rgba(74,158,255,0.2);
+      border-top-color: #4a9eff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Hint text (fades out after first interaction) */
+    #hint {
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(120, 180, 255, 0.55);
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
+      pointer-events: none;
+      transition: opacity 1s;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading screen -->
+  <div id="loading">
+    <div id="loading-title">Hydration Physics</div>
+    <div class="spinner"></div>
+    <div>Loading simulation…</div>
+  </div>
+
+  <!-- Hint -->
+  <div id="hint">Touch &amp; drag to push particles</div>
+
+  <!-- WebGL canvas -->
+  <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+
+  <!-- On-screen buttons -->
+  <div id="controls">
+    <button class="ctrl-btn" id="btn-reset"   ontouchend="doReset()"   onclick="doReset()">Reset</button>
+    <button class="ctrl-btn" id="btn-gravity" ontouchend="doGravity()" onclick="doGravity()">Flip Gravity</button>
+  </div>
+
+  <script>
+    // Size the canvas to fill the screen before WASM boots
+    (function() {
+      var c = document.getElementById('canvas');
+      c.width  = window.innerWidth;
+      c.height = window.innerHeight;
+    })();
+
+    window.addEventListener('resize', function() {
+      var c = document.getElementById('canvas');
+      c.width  = window.innerWidth;
+      c.height = window.innerHeight;
+    });
+
+    // Hide loading overlay once the module is ready
+    var Module = {
+      canvas: document.getElementById('canvas'),
+
+      onRuntimeInitialized: function() {
+        var loading = document.getElementById('loading');
+        loading.style.transition = 'opacity 0.5s';
+        loading.style.opacity = '0';
+        setTimeout(function() { loading.style.display = 'none'; }, 500);
+      },
+
+      // Suppress Emscripten's default status messages in the DOM
+      setStatus: function() {},
+      monitorRunDependencies: function() {}
+    };
+
+    // Fade out hint after first touch/click
+    (function() {
+      var hint = document.getElementById('hint');
+      var faded = false;
+      function fade() {
+        if (faded) return;
+        faded = true;
+        hint.style.opacity = '0';
+        setTimeout(function() { hint.style.display = 'none'; }, 1000);
+      }
+      document.addEventListener('touchstart', fade, { once: true, passive: true });
+      document.addEventListener('mousedown',  fade, { once: true });
+    })();
+
+    // Button callbacks — call exported C functions via ccall
+    function doReset() {
+      if (Module.ccall) Module.ccall('web_reset', null, [], []);
+      return false; // prevent click firing after touchend
+    }
+    function doGravity() {
+      if (Module.ccall) Module.ccall('web_toggle_gravity', null, [], []);
+      return false;
+    }
+  </script>
+
+  <script src="hydration.js"></script>
+</body>
+</html>

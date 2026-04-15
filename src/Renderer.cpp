@@ -94,75 +94,70 @@ bool Renderer::init(const std::string& shaderDir) {
         std::cerr << "Failed to load particle shaders!" << std::endl;
         return false;
     }
-    
-    // Create a simple line shader inline (minimal GLSL)
-    // We'll reuse the particle shader's projection but with a solid color
-    
-    // For the box and background, we create minimal inline shaders
-    std::string lineVert = R"(
-        #version 330 core
-        layout (location = 0) in vec2 aPos;
-        uniform mat4 projection;
-        void main() {
-            gl_Position = projection * vec4(aPos, 0.0, 1.0);
-        }
-    )";
-    
-    std::string lineFrag = R"(
-        #version 330 core
-        uniform vec3 lineColor;
-        out vec4 FragColor;
-        void main() {
-            FragColor = vec4(lineColor, 0.8);
-        }
-    )";
-    
+
+    // Version header differs between desktop GLSL 3.30 and WebGL GLSL ES 3.00
+#ifdef __EMSCRIPTEN__
+    const std::string V = "#version 300 es\nprecision mediump float;\n";
+#else
+    const std::string V = "#version 330 core\n";
+#endif
+
+    std::string lineVert = V + R"(
+layout (location = 0) in vec2 aPos;
+uniform mat4 projection;
+void main() {
+    gl_Position = projection * vec4(aPos, 0.0, 1.0);
+}
+)";
+
+    std::string lineFrag = V + R"(
+uniform vec3 lineColor;
+out vec4 FragColor;
+void main() {
+    FragColor = vec4(lineColor, 0.8);
+}
+)";
+
     // Compile line shader manually
     GLuint vs = glCreateShader(GL_VERTEX_SHADER);
     const char* vsSrc = lineVert.c_str();
     glShaderSource(vs, 1, &vsSrc, nullptr);
     glCompileShader(vs);
-    
+
     GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
     const char* fsSrc = lineFrag.c_str();
     glShaderSource(fs, 1, &fsSrc, nullptr);
     glCompileShader(fs);
-    
+
     lineShader.ID = glCreateProgram();
     glAttachShader(lineShader.ID, vs);
     glAttachShader(lineShader.ID, fs);
     glLinkProgram(lineShader.ID);
     glDeleteShader(vs);
     glDeleteShader(fs);
-    
+
     // Background shader
-    std::string bgVert = R"(
-        #version 330 core
-        layout (location = 0) in vec2 aPos;
-        out vec2 uv;
-        void main() {
-            gl_Position = vec4(aPos, 0.0, 1.0);
-            uv = aPos * 0.5 + 0.5;
-        }
-    )";
-    
-    std::string bgFrag = R"(
-        #version 330 core
-        in vec2 uv;
-        out vec4 FragColor;
-        void main() {
-            // Dark gradient background (deep navy to dark blue)
-            vec3 topColor = vec3(0.02, 0.03, 0.08);
-            vec3 bottomColor = vec3(0.05, 0.07, 0.15);
-            vec3 color = mix(bottomColor, topColor, uv.y);
-            
-            // Subtle vignette
-            float vignette = 1.0 - length(uv - 0.5) * 0.5;
-            color *= vignette;
-            
-            FragColor = vec4(color, 1.0);
-        }
-    )";
+    std::string bgVert = V + R"(
+layout (location = 0) in vec2 aPos;
+out vec2 uv;
+void main() {
+    gl_Position = vec4(aPos, 0.0, 1.0);
+    uv = aPos * 0.5 + 0.5;
+}
+)";
+
+    std::string bgFrag = V + R"(
+in vec2 uv;
+out vec4 FragColor;
+void main() {
+    vec3 topColor    = vec3(0.02, 0.03, 0.08);
+    vec3 bottomColor = vec3(0.05, 0.07, 0.15);
+    vec3 color = mix(bottomColor, topColor, uv.y);
+    float vignette = 1.0 - length(uv - 0.5) * 0.5;
+    color *= vignette;
+    FragColor = vec4(color, 1.0);
+}
+)";
     
     GLuint bgvs = glCreateShader(GL_VERTEX_SHADER);
     const char* bgvsSrc = bgVert.c_str();
@@ -185,8 +180,10 @@ bool Renderer::init(const std::string& shaderDir) {
     setupBoxBuffers();
     setupBackground();
     
-    // Enable point sprites
+    // Enable point size from vertex shader (desktop only; always on in WebGL)
+#ifndef __EMSCRIPTEN__
     glEnable(GL_PROGRAM_POINT_SIZE);
+#endif
     
     return true;
 }
