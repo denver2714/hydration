@@ -1,6 +1,8 @@
 #pragma once
 
-#include <OpenGL/gl3.h>
+#define GL_GLEXT_PROTOTYPES
+#include <GL/gl.h>
+#include <GL/glext.h>
 #include "Shader.h"
 #include "Simulation.h"
 #include <glm/glm.hpp>

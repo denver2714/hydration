@@ -1,7 +1,7 @@
-CXX = clang++
-CXXFLAGS = -std=c++17 -O2 -Wall -Wextra -DGL_SILENCE_DEPRECATION
-INCLUDES = -I/opt/homebrew/include -I.
-LDFLAGS = -L/opt/homebrew/lib -lglfw -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
+CXX = g++
+CXXFLAGS = -std=c++17 -O2 -Wall -Wextra
+INCLUDES = -I.
+LDFLAGS = -lglfw -lGL -lX11 -lpthread -lXrandr -lXi -ldl
 
 TARGET = hydration
 SRCDIR = src

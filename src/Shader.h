@@ -1,6 +1,8 @@
 #pragma once
 
-#include <OpenGL/gl3.h>
+#define GL_GLEXT_PROTOTYPES
+#include <GL/gl.h>
+#include <GL/glext.h>
 #include <string>
 #include <glm/glm.hpp>
 
